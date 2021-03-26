@@ -1,5 +1,12 @@
 # sensible_ft_server
 
+## Notice!
+
+- 目前只有 genesis、issue 接口是可以正常运作，transfer 会验证失败，还在调试中。
+- 必须运行在 nodejs_12.0.0 以上，nodejs 版本切换后 npm 可能因为版本不兼容而无法正常工作，遇到时可以先切回来
+- 主网运行必须使用 metasv 接口，whatsonchain 不支持 transfer 的 10k 脚本
+- 本项目合约来自<a href="https://github.com/sensing-contract/token_sensible/blob/master/docs/token_cn.md">token_sensible</a>项目
+
 ## Protocol
 
 #### TokenGenesis
@@ -51,8 +58,6 @@
 [code part](variable)
 
 ```
-
-可前往<a href="https://github.com/sensing-contract/token_sensible/blob/master/docs/token_cn.md">token_sensible</a>了解更多
 
 ## How to Build
 
