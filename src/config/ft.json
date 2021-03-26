@@ -1,0 +1,22 @@
+{
+  "default": {
+    "wif": "L2YWukZEh9b7wLMLRrZWnaEZCHaTMXnQAH75ZuvhrTvAeFa6vxMM",
+    "apiTarget": "metasv",
+    "network": "main",
+    "feeb": 0.5,
+    "minSplit": 80,
+    "maxSplit": 100,
+    "unitSatoshis": 30000,
+    "contractSatoshis": 3000
+  },
+  "production": {
+    "wif": "L2YWukZEh9b7wLMLRrZWnaEZCHaTMXnQAH75ZuvhrTvAeFa6vxMM",
+    "apiTarget": "metasv",
+    "network": "main",
+    "feeb": 0.5,
+    "minSplit": 80,
+    "maxSplit": 100,
+    "unitSatoshis": 30000,
+    "contractSatoshis": 3000
+  }
+}
