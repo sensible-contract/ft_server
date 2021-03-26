@@ -3,5 +3,4 @@ logs
 out
 dist
 .vscode/settings.json
-autoGen
 tool/
