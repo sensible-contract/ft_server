@@ -102,7 +102,7 @@ curl -X POST  -H "Content-Type: application/json" --data '{
   "code": 0,
   "msg": "",
   "data": {
-    "genesisId": "fd7117f26c7fedb2a5e9bb17ed94f42142e2f2d51cd6b80e25cb7874625dadd5"
+    "genesisId": "1ee411ab7e23a1f60513a332dd6f593acf1118d2354795c501188dcc0f72a492"
   }
 }
 ```
@@ -122,10 +122,10 @@ curl -X POST  -H "Content-Type: application/json" --data '{
 
 ```shell
 curl -X POST -H "Content-Type: application/json" --data '{
-    "genesisId":"4e1edf5b89300210001ed6f7c7398a0222faefebb24a4c35c14cd47ad39bfd1d",
+    "genesisId":"1ee411ab7e23a1f60513a332dd6f593acf1118d2354795c501188dcc0f72a492",
     "tokenAmount":"100",
     "receiverAddress":"1MzEyAMS3eM63gMcc9AVjZSEu4j3KYpBVQ",
-    "allowIssueInAddition":false
+    "allowIssueInAddition":true
 }' http://127.0.0.1:8092/api/ft/issue
 ```
 
@@ -136,7 +136,7 @@ curl -X POST -H "Content-Type: application/json" --data '{
   "code": 0,
   "msg": "",
   "data": {
-    "txId": "f386bbf17a82047694e19f4fdc7ea209b66bb10ce7fdb31e1afd755a95e93f00"
+    "txId": "580015e8a9de2d5b82065700295f17bd9f6e86b2f26e3135901b9fb76a3f5d0e"
   }
 }
 ```
@@ -155,11 +155,14 @@ curl -X POST -H "Content-Type: application/json" --data '{
 
 ```shell
 curl -X POST -H "Content-Type: application/json" --data '{
-    "genesisId":"4e1edf5b89300210001ed6f7c7398a0222faefebb24a4c35c14cd47ad39bfd1d",
+    "genesisId":"1ee411ab7e23a1f60513a332dd6f593acf1118d2354795c501188dcc0f72a492",
     "senderWif":"L2YWukZEh9b7wLMLRrZWnaEZCHaTMXnQAH75ZuvhrTvAeFa6vxMM",
     "receivers":[{
     	"address":"1MzEyAMS3eM63gMcc9AVjZSEu4j3KYpBVQ",
-    	"amount":"20"
+    	"amount":1
+    },{
+    	"address":"1MzEyAMS3eM63gMcc9AVjZSEu4j3KYpBVQ",
+    	"amount":2
     }]
 }' http://127.0.0.1:8092/api/ft/transfer
 ```
@@ -171,7 +174,7 @@ curl -X POST -H "Content-Type: application/json" --data '{
   "code": 0,
   "msg": "",
   "data": {
-    "txId": "4d83502c13568c24485a2af9bfb5dd5cd764232c9b8b11b287151d10b6995810"
+    "txId": "a8f2e576a0df79170486f7bdc7d88d2106e075ce91a6083c8643a7197b1a2a61"
   }
 }
 ```
