@@ -7,11 +7,11 @@ class FungibleTokenDao {
     return app.dao.getClient("db_sensible_ft");
   }
 
-  static getUtxos(genesisId) {
+  static getUtxos(address, genesisId) {
     return new Promise((resolve, reject) => {
       this.getDB()
-        .collection("ft_utxos_" + genesisId)
-        .find({})
+        .collection("ft_utxos_" + address)
+        .find({ genesisId })
         .toArray((err, res) => {
           if (err) {
             reject(new CodeError(ErrCode.EC_DAO_ERROR));
@@ -23,10 +23,10 @@ class FungibleTokenDao {
     });
   }
 
-  static addUtxos(genesisId, utxos) {
+  static addUtxos(address, utxos) {
     return new Promise((resolve, reject) => {
       this.getDB()
-        .collection("ft_utxos_" + genesisId)
+        .collection("ft_utxos_" + address)
         .insertMany(utxos, (err, res) => {
           if (err) {
             reject(new CodeError(ErrCode.EC_DAO_ERROR));
@@ -37,10 +37,10 @@ class FungibleTokenDao {
     });
   }
 
-  static removeUtxo(genesisId, txId, outputIndex) {
+  static removeUtxo(address, txId, outputIndex) {
     return new Promise((resolve, reject) => {
       this.getDB()
-        .collection("ft_utxos_" + genesisId)
+        .collection("ft_utxos_" + address)
         .deleteOne({ txId, outputIndex }, (err, res) => {
           if (err) {
             reject(new CodeError(ErrCode.EC_DAO_ERROR));
@@ -51,19 +51,19 @@ class FungibleTokenDao {
     });
   }
 
-  static updateUtxo(genesisId, txId, outputIndex, utxo) {
-    return new Promise((resolve, reject) => {
-      this.getDB()
-        .collection("ft_utxos_" + genesisId)
-        .updateOne({ txId, outputIndex }, { $set: utxo }, (err, res) => {
-          if (err) {
-            reject(new CodeError(ErrCode.EC_DAO_ERROR));
-            return;
-          }
-          resolve(res);
-        });
-    });
-  }
+  // static updateUtxo(genesisId, txId, outputIndex, utxo) {
+  //   return new Promise((resolve, reject) => {
+  //     this.getDB()
+  //       .collection("ft_utxos_" + genesisId)
+  //       .updateOne({ txId, outputIndex }, { $set: utxo }, (err, res) => {
+  //         if (err) {
+  //           reject(new CodeError(ErrCode.EC_DAO_ERROR));
+  //           return;
+  //         }
+  //         resolve(res);
+  //       });
+  //   });
+  // }
 }
 
 module.exports = {

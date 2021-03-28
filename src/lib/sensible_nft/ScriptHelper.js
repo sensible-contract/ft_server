@@ -14,7 +14,6 @@ const dummyTxId =
   "a477af6b2667c29670467e4e0728b685ee07b240235771862318e29ddbe58458";
 const reversedDummyTxId =
   "5884e5db9de218238671572340b207ee85b628074e7e467096c267266baf77a4";
-const SATOTX_API_PREFIX = "https://api.satotx.com";
 
 const out = path.join(__dirname, "deployments/fixture/autoGen");
 const contractScryptPath = path.join(__dirname, "../../../contracts");
@@ -24,15 +23,15 @@ const contractJsonPath = path.join(
 );
 
 class ScriptHelper {
-  static prepare(blockChainApi, privateKey, contractSatoshis) {
+  static prepare(blockChainApi, privateKey, signers) {
     this.blockChainApi = blockChainApi;
     this.privateKey = privateKey;
     this.dummyAddress = privateKey.toAddress();
     const dummyPublicKey = bsv.PublicKey.fromPrivateKey(privateKey);
     this.dummyPkh = bsv.crypto.Hash.sha256ripemd160(dummyPublicKey.toBuffer());
 
-    this.contractSatoshis = contractSatoshis;
     this.fee = 1000;
+    this.signers = signers;
   }
   /**
    * reverse hexStr byte order
@@ -218,48 +217,6 @@ class ScriptHelper {
     );
   }
 
-  /**
-   * @param {Object} satotxData
-   * @param {number} satotxData.index utxo的vout
-   * @param {Sha256} satotxData.txId 产生utxo的txid
-   * @param {String} satotxData.txHex 产生utxo的rawtx
-   * @param {Sha256} satotxData.byTxId 花费此utxo的txid
-   * @param {String} satotxData.byTxHex 花费此utxo的rawtx
-   */
-  static async satoTxSigUTXOSpendBy({ index, txId, txHex, byTxId, byTxHex }) {
-    let _res = await Net.httpPost(
-      `${SATOTX_API_PREFIX}/utxo-spend-by/${txId}/${index}/${byTxId}`,
-      {
-        txHex: txHex,
-        byTxHex: byTxHex,
-      }
-    );
-    if (_res.code != 0) {
-      throw _res.msg;
-    }
-
-    return _res.data;
-  }
-
-  /**
-   * @param {Object} satotxData
-   * @param {number} satotxData.index utxo的vout
-   * @param {Sha256} satotxData.txId 产生utxo的txid
-   * @param {String} satotxData.txHex 产生utxo的rawtx
-   */
-  static async satoTxSigUTXO({ index, txId, txHex }) {
-    let _res = await Net.httpPost(
-      `${SATOTX_API_PREFIX}/utxo/${txId}/${index}`,
-      {
-        txHex: txHex,
-      }
-    );
-    if (_res.code == -1) {
-      throw _res.msg;
-    }
-    return _res.data;
-  }
-
   static async sendTx(tx) {
     let txid = await this.blockChainApi.broadcast(tx.serialize());
     return txid;
@@ -309,6 +266,15 @@ class ScriptHelper {
     let dataPart = parts[2];
     if (!dataPart) return "";
     return dataPart.len.toString(16) + dataPart.buf.toString("hex");
+  }
+
+  /**
+   *
+   * 9 8字节的金额1字节的脚本长度，安全点可以设为2字节
+   * 148是P2PKH是输入脚本的大小
+   */
+  static getDustThreshold(lockingScriptSize) {
+    return 3 * Math.ceil((250 * (lockingScriptSize + 9 + 148)) / 1000);
   }
 }
 

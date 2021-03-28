@@ -47,9 +47,9 @@ contract TokenRouteCheck {
     int sumInputToken = 0;
     int paddingPos = 0;
     require(rabinPubKeyIndexArray[0] != rabinPubKeyIndexArray[1]);
-    require(nSenders <= 3);
+    require(nSenders <= 20);
     // max support loop num input token
-    loop(3) {
+    loop(20) {
       if (i < nSenders) {
         int j = 0;
         // verify rabin signature

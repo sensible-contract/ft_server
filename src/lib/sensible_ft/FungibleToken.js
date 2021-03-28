@@ -21,65 +21,167 @@ const {
 } = require("../sensible_nft/ScriptHelper");
 const TokenProto = require("./tokenProto");
 const TokenUtil = require("./tokenUtil");
+const Proto = require("./protoheader");
 const Signature = bsv.crypto.Signature;
 const sighashType = Signature.SIGHASH_ALL | Signature.SIGHASH_FORKID;
-const genesisFlag = Buffer.from("01", "hex");
-const nonGenesisFlag = Buffer.from("00", "hex");
-const tokenType = Buffer.alloc(4, 0);
-tokenType.writeUInt32LE(1);
-const PROTO_FLAG = Buffer.from("oraclesv");
-
+const genesisFlag = 1;
+const nonGenesisFlag = 0;
+const tokenType = 1;
+const genesisTokenIDTxid =
+  "0000000000000000000000000000000000000000000000000000000000000000";
 const GenesisContractClass = buildContractClass(
   ScriptHelper.loadDesc("tokenGenesis_desc.json")
 );
 const TokenContractClass = buildContractClass(
   ScriptHelper.loadDesc("token_desc.json")
 );
-const RouteCheckContractClass = buildContractClass(
+
+const RouteCheckContractClass_3To3 = buildContractClass(
   ScriptHelper.loadDesc("tokenRouteCheck_desc.json")
 );
-const UnlockContractCheckContractClass = buildContractClass(
+
+const RouteCheckContractClass_6To6 = buildContractClass(
+  ScriptHelper.loadDesc("tokenRouteCheck_6To6_desc.json")
+);
+
+const RouteCheckContractClass_10To10 = buildContractClass(
+  ScriptHelper.loadDesc("tokenRouteCheck_10To10_desc.json")
+);
+
+const RouteCheckContractClass_3To100 = buildContractClass(
+  ScriptHelper.loadDesc("tokenRouteCheck_3To100_desc.json")
+);
+
+const RouteCheckContractClass_20To3 = buildContractClass(
+  ScriptHelper.loadDesc("tokenRouteCheck_20To3_desc.json")
+);
+
+const UnlockContractCheckContractClass_3To5 = buildContractClass(
   ScriptHelper.loadDesc("tokenUnlockContractCheck_desc.json")
 );
 
-const genesisTxOutputIndex = 0;
+const UnlockContractCheckContractClass_6To6 = buildContractClass(
+  ScriptHelper.loadDesc("tokenUnlockContractCheck_6To6_desc.json")
+);
+
+const UnlockContractCheckContractClass_10To10 = buildContractClass(
+  ScriptHelper.loadDesc("tokenUnlockContractCheck_10To10_desc.json")
+);
+
+const UnlockContractCheckContractClass_3To100 = buildContractClass(
+  ScriptHelper.loadDesc("tokenUnlockContractCheck_3To100_desc.json")
+);
+
+const UnlockContractCheckContractClass_20To3 = buildContractClass(
+  ScriptHelper.loadDesc("tokenUnlockContractCheck_20To3_desc.json")
+);
+
+const ROUTE_CHECK_TYPE_3To3 = 0;
+const ROUTE_CHECK_TYPE_6To6 = 1;
+const ROUTE_CHECK_TYPE_10To10 = 2;
+const ROUTE_CHECK_TYPE_3To100 = 3;
+const ROUTE_CHECK_TYPE_20To3 = 4;
+
 const genesisContractSize = 3840;
 
-const genesisContractSatoshis = 3000;
-const tokenContractSatoshis = 3000;
-
 class FungibleToken {
-  constructor() {
-    //应该准备3组公钥
-    // @ts-ignore
-    const rabinPubKey = 0x25108ec89eb96b99314619eb5b124f11f00307a833cda48f5ab1865a04d4cfa567095ea4dd47cdf5c7568cd8efa77805197a67943fe965b0a558216011c374aa06a7527b20b0ce9471e399fa752e8c8b72a12527768a9fc7092f1a7057c1a1514b59df4d154df0d5994ff3b386a04d819474efbd99fb10681db58b1bd857f6d5n;
+  constructor(rabinPubKey1, rabinPubKey2, rabinPubKey3) {
+    this.rabinPubKeyArray = [rabinPubKey1, rabinPubKey2, rabinPubKey3];
 
-    const rabinPubKey2 = 0x25108ec89eb96b99314619eb5b124f11f00307a833cda48f5ab1865a04d4cfa567095ea4dd47cdf5c7568cd8efa77805197a67943fe965b0a558216011c374aa06a7527b20b0ce9471e399fa752e8c8b72a12527768a9fc7092f1a7057c1a1514b59df4d154df0d5994ff3b386a04d819474efbd99fb10681db58b1bd857f6d5n;
-    this.rabinPubKeyArray = [rabinPubKey, rabinPubKey, rabinPubKey];
-
-    //initContractHash
-    const routeCheckCode = new RouteCheckContractClass(this.rabinPubKeyArray);
-    let code = routeCheckCode.lockingScript.toBuffer();
-    const routeCheckCodeHash = new Bytes(
-      Buffer.from(bsv.crypto.Hash.sha256ripemd160(code)).toString("hex")
-    );
     this.routeCheckCodeHashArray = [
-      routeCheckCodeHash,
-      routeCheckCodeHash,
-      routeCheckCodeHash,
+      new Bytes(
+        Buffer.from(
+          bsv.crypto.Hash.sha256ripemd160(
+            new RouteCheckContractClass_3To3(
+              this.rabinPubKeyArray
+            ).lockingScript.toBuffer()
+          )
+        ).toString("hex")
+      ),
+      new Bytes(
+        Buffer.from(
+          bsv.crypto.Hash.sha256ripemd160(
+            new RouteCheckContractClass_6To6(
+              this.rabinPubKeyArray
+            ).lockingScript.toBuffer()
+          )
+        ).toString("hex")
+      ),
+      new Bytes(
+        Buffer.from(
+          bsv.crypto.Hash.sha256ripemd160(
+            new RouteCheckContractClass_10To10(
+              this.rabinPubKeyArray
+            ).lockingScript.toBuffer()
+          )
+        ).toString("hex")
+      ),
+      new Bytes(
+        Buffer.from(
+          bsv.crypto.Hash.sha256ripemd160(
+            new RouteCheckContractClass_3To100(
+              this.rabinPubKeyArray
+            ).lockingScript.toBuffer()
+          )
+        ).toString("hex")
+      ),
+      new Bytes(
+        Buffer.from(
+          bsv.crypto.Hash.sha256ripemd160(
+            new RouteCheckContractClass_20To3(
+              this.rabinPubKeyArray
+            ).lockingScript.toBuffer()
+          )
+        ).toString("hex")
+      ),
     ];
 
-    const unlockContract = new UnlockContractCheckContractClass(
-      this.rabinPubKeyArray
-    );
-    code = unlockContract.lockingScript.toBuffer();
-    const unlockContractCodeHash = new Bytes(
-      Buffer.from(bsv.crypto.Hash.sha256ripemd160(code)).toString("hex")
-    );
     this.unlockContractCodeHashArray = [
-      unlockContractCodeHash,
-      unlockContractCodeHash,
-      unlockContractCodeHash,
+      new Bytes(
+        Buffer.from(
+          bsv.crypto.Hash.sha256ripemd160(
+            new UnlockContractCheckContractClass_3To5(
+              this.rabinPubKeyArray
+            ).lockingScript.toBuffer()
+          )
+        ).toString("hex")
+      ),
+      new Bytes(
+        Buffer.from(
+          bsv.crypto.Hash.sha256ripemd160(
+            new UnlockContractCheckContractClass_6To6(
+              this.rabinPubKeyArray
+            ).lockingScript.toBuffer()
+          )
+        ).toString("hex")
+      ),
+      new Bytes(
+        Buffer.from(
+          bsv.crypto.Hash.sha256ripemd160(
+            new UnlockContractCheckContractClass_10To10(
+              this.rabinPubKeyArray
+            ).lockingScript.toBuffer()
+          )
+        ).toString("hex")
+      ),
+      new Bytes(
+        Buffer.from(
+          bsv.crypto.Hash.sha256ripemd160(
+            new UnlockContractCheckContractClass_3To100(
+              this.rabinPubKeyArray
+            ).lockingScript.toBuffer()
+          )
+        ).toString("hex")
+      ),
+      new Bytes(
+        Buffer.from(
+          bsv.crypto.Hash.sha256ripemd160(
+            new UnlockContractCheckContractClass_20To3(
+              this.rabinPubKeyArray
+            ).lockingScript.toBuffer()
+          )
+        ).toString("hex")
+      ),
     ];
   }
 
@@ -91,25 +193,25 @@ class FungibleToken {
    * @param {number} decimalNum the token amount decimal number
    * @returns
    */
-  createGenesisContract(issuerPubKey, tokenName, tokenSymbol, decimalNum) {
+  createGenesisContract(
+    issuerPubKey,
+    { tokenName, tokenSymbol, decimalNum } = {}
+  ) {
     const genesisContract = new GenesisContractClass(
       new PubKey(toHex(issuerPubKey)),
       this.rabinPubKeyArray
     );
-    const decimalBuf = Buffer.alloc(1, 0);
-    decimalBuf.writeUInt8(decimalNum);
-    const oracleData = Buffer.concat([
-      Buffer.from(tokenName),
-      Buffer.from(tokenSymbol),
-      genesisFlag,
-      decimalBuf,
-      Buffer.alloc(20, 0), // address
-      Buffer.alloc(8, 0), // token value
-      Buffer.alloc(36, 0), // tokenID
-      tokenType, // type
-      PROTO_FLAG,
-    ]);
-    genesisContract.setDataPart(oracleData.toString("hex"));
+    if (tokenName) {
+      const oracleData = TokenProto.newOracleData({
+        tokenName,
+        tokenSymbol,
+        genesisFlag,
+        decimalNum,
+        tokenType,
+      });
+      genesisContract.setDataPart(oracleData.toString("hex"));
+    }
+
     return genesisContract;
   }
 
@@ -119,17 +221,9 @@ class FungibleToken {
    * @param {Object[]} utxos utxos
    * @param {bsv.Address} changeAddress the change address
    * @param {number} feeb feeb
-   * @param {string} genesisScript genesis contract's locking script
-   * @param {number} genesisContractSatoshis the genesis contract utxo output satoshis
+   * @param {string} genesisScript genesis contract's locking scriptsatoshis
    */
-  createGenesisTx(
-    utxoPrivateKey,
-    utxos,
-    changeAddress,
-    feeb,
-    genesisScript,
-    genesisContractSatoshis
-  ) {
+  createGenesisTx(utxoPrivateKey, utxos, changeAddress, feeb, genesisContract) {
     const tx = new bsv.Transaction().from(
       utxos.map((utxo) => ({
         txId: utxo.txId,
@@ -142,8 +236,10 @@ class FungibleToken {
     );
     tx.addOutput(
       new bsv.Transaction.Output({
-        script: genesisScript,
-        satoshis: genesisContractSatoshis,
+        script: genesisContract.lockingScript,
+        satoshis: ScriptHelper.getDustThreshold(
+          genesisContract.lockingScript.toBuffer().length
+        ),
       })
     );
 
@@ -159,35 +255,25 @@ class FungibleToken {
    * @param {number} genesisTxOutputIndex the genesis utxo output index
    * @param {bsv.Script} genesisScript the genesis contract's locking script
    * @param {bsv.Address} receiverAddress receiver's address
-   * @param {number} tokenValue the token value want to create
+   * @param {BigInt} tokenAmount the token amount want to create
    * @returns
    */
   createTokenContract(
-    genesisTxId,
-    genesisTxOutputIndex,
-    genesisLockingScript,
-    receiverAddress,
-    tokenValue
+    toSpentGenesisTxId,
+    toSpentGenesisTxOutputIndex,
+    genesisContract,
+    { receiverAddress, tokenAmount } = {}
   ) {
-    const scriptBuffer = genesisLockingScript.toBuffer();
-    const tokenName = TokenProto.getTokenName(scriptBuffer);
-    const tokenSymbol = TokenProto.getTokenSymbol(scriptBuffer);
-    const decimalNum = TokenProto.getDecimalNum(scriptBuffer);
-    const indexBuf = Buffer.alloc(4, 0);
-    indexBuf.writeUInt32LE(genesisTxOutputIndex);
-    let tokenID = TokenProto.getTokenID(scriptBuffer);
-    let isFirstGenesis = false;
+    const scriptBuffer = genesisContract.lockingScript.toBuffer();
+    const oracleDataObj = TokenProto.parseOracleData(scriptBuffer);
+
     let genesisHash;
-    if (tokenID.compare(Buffer.alloc(36, 0)) === 0) {
-      isFirstGenesis = true;
-      tokenID = Buffer.concat([
-        Buffer.from(genesisTxId, "hex").reverse(),
-        indexBuf,
-      ]);
-      const newScriptBuf = TokenProto.getNewGenesisScript(
-        scriptBuffer,
-        tokenID
-      );
+    if (oracleDataObj.tokenID.txid == genesisTokenIDTxid) {
+      oracleDataObj.tokenID = {
+        txid: toSpentGenesisTxId,
+        index: toSpentGenesisTxOutputIndex,
+      };
+      const newScriptBuf = TokenProto.updateScript(scriptBuffer, oracleDataObj);
       genesisHash = bsv.crypto.Hash.sha256ripemd160(newScriptBuf);
     } else {
       genesisHash = bsv.crypto.Hash.sha256ripemd160(scriptBuffer);
@@ -200,29 +286,17 @@ class FungibleToken {
       new Bytes(genesisHash.toString("hex"))
     );
     if (receiverAddress) {
-      const decimalBuf = Buffer.alloc(1, 0);
-      decimalBuf.writeUInt8(decimalNum);
-      const buffValue = Buffer.alloc(8, 0);
-      buffValue.writeBigUInt64LE(BigInt(tokenValue));
-      const oracleData = Buffer.concat([
-        tokenName,
-        tokenSymbol,
-        nonGenesisFlag, // genesis flag
-        decimalBuf,
-        receiverAddress.hashBuffer, // address
-        buffValue, // token value
-        tokenID, // script code hash
-        tokenType, // type
-        PROTO_FLAG,
-      ]);
+      oracleDataObj.genesisFlag = nonGenesisFlag;
+      oracleDataObj.tokenAddress = toHex(receiverAddress.hashBuffer);
+      oracleDataObj.tokenAmount = tokenAmount;
+      const oracleData = TokenProto.newOracleData(oracleDataObj);
       tokenContract.setDataPart(oracleData.toString("hex"));
     }
 
     return tokenContract;
   }
 
-  async createTokenTx(
-    isFromOrigin,
+  async createIssueTx(
     genesisContract,
     issuerPrivKey,
     genesisTxOutputIndex,
@@ -233,9 +307,9 @@ class FungibleToken {
     changeAddress,
     feeb,
     tokenContract,
-    genesisContractSatoshis,
-    tokenContractSatoshis,
-    satotxData
+    allowIssueInAddition,
+    satotxData,
+    oracleSelecteds
   ) {
     utxos = [genesisUtxo].concat(utxos);
     const tx = new bsv.Transaction().from(
@@ -252,36 +326,55 @@ class FungibleToken {
       }))
     );
 
-    const tokenID = TokenProto.getTokenID(
+    const tokenOracleDataObj = TokenProto.parseOracleData(
       tokenContract.lockingScript.toBuffer()
     );
-    let newGenesislockingScript = bsv.Script.fromBuffer(
-      TokenProto.getNewGenesisScript(genesisLockingScript.toBuffer(), tokenID)
-    );
-    tx.addOutput(
-      new bsv.Transaction.Output({
-        script: newGenesislockingScript,
-        satoshis: genesisContractSatoshis,
-      })
+    const genesisOracleDataObj = TokenProto.parseOracleData(
+      genesisContract.lockingScript.toBuffer()
     );
 
-    let tokenLockingScript = tokenContract.lockingScript;
+    const isFirstGenesis =
+      genesisOracleDataObj.tokenID.txid == genesisTokenIDTxid;
+
+    let genesisContractSatoshis = 0;
+    if (allowIssueInAddition) {
+      genesisOracleDataObj.tokenID = tokenOracleDataObj.tokenID;
+      let newGenesislockingScript = bsv.Script.fromBuffer(
+        TokenProto.updateScript(
+          genesisLockingScript.toBuffer(),
+          genesisOracleDataObj
+        )
+      );
+      genesisContractSatoshis = ScriptHelper.getDustThreshold(
+        newGenesislockingScript.toBuffer().length
+      );
+      tx.addOutput(
+        new bsv.Transaction.Output({
+          script: newGenesislockingScript,
+          satoshis: genesisContractSatoshis,
+        })
+      );
+    }
+
+    const tokenContractSatoshis = ScriptHelper.getDustThreshold(
+      tokenContract.lockingScript.toBuffer().length
+    );
+
     tx.addOutput(
       new bsv.Transaction.Output({
-        script: tokenLockingScript,
+        script: tokenContract.lockingScript,
         satoshis: tokenContractSatoshis,
       })
     );
 
     tx.change(changeAddress);
-    tx.fee(Math.ceil((tx._estimateSize() + genesisContractSize) * feeb));
-
+    tx.fee(Math.ceil((tx._estimateSize() + 4300) * feeb));
     const changeSatoshis = tx.outputs[tx.outputs.length - 1].satoshis;
 
     const preimage = getPreimage(
       tx,
       genesisLockingScript.toASM(),
-      genesisContractSatoshis,
+      ScriptHelper.getDustThreshold(genesisLockingScript.toBuffer().length),
       genesisTxOutputIndex,
       sighashType
     );
@@ -290,33 +383,33 @@ class FungibleToken {
       tx,
       issuerPrivKey,
       genesisLockingScript.toASM(),
-      genesisContractSatoshis,
+      ScriptHelper.getDustThreshold(genesisLockingScript.toBuffer().length),
       genesisTxOutputIndex,
       sighashType
     );
 
-    let rabinMsg, rabinPaddingArray, rabinSigArray, rabinPubKeyIndexArray;
-    if (isFromOrigin) {
-      //如果是第一次生成的genesis合约，则不需要验证
+    let rabinMsg;
+    let rabinPaddingArray = [];
+    let rabinSigArray = [];
+    let rabinPubKeyIndexArray = [];
+    if (isFirstGenesis) {
       rabinMsg = Buffer.alloc(1, 0);
       rabinPaddingArray = [new Bytes("00"), new Bytes("00")];
       rabinSigArray = [0, 0];
       rabinPubKeyIndexArray = [0, 1];
     } else {
-      let sigInfo = await ScriptHelper.satoTxSigUTXOSpendBy(satotxData);
-      rabinMsg = sigInfo.payload;
-      rabinPaddingArray = [
-        new Bytes(sigInfo.padding),
-        new Bytes(sigInfo.padding),
-      ];
-      rabinSigArray = [
-        BigInt("0x" + sigInfo.sigBE),
-        BigInt("0x" + sigInfo.sigBE),
-      ];
-      rabinPubKeyIndexArray = [0, 1];
+      for (let i = 0; i < 2; i++) {
+        const signerIndex = oracleSelecteds[i];
+        let sigInfo = await ScriptHelper.signers[
+          signerIndex
+        ].satoTxSigUTXOSpendBy(satotxData);
+        rabinMsg = sigInfo.payload;
+        rabinPaddingArray.push(new Bytes(sigInfo.padding));
+        rabinSigArray.push(BigInt("0x" + sigInfo.sigBE));
+      }
+
+      rabinPubKeyIndexArray = oracleSelecteds;
     }
-    // TODO: get genesis from the script code
-    const issuerPubKey = issuerPrivKey.publicKey;
     const contractObj = genesisContract.unlock(
       new SigHashPreimage(toHex(preimage)),
       new Sig(toHex(sig)),
@@ -324,8 +417,8 @@ class FungibleToken {
       rabinPaddingArray,
       rabinSigArray,
       rabinPubKeyIndexArray,
-      genesisContractSatoshis, //如果设为0，那么就不允许增发了。当然前面也不能加output
-      new Bytes(tokenLockingScript.toHex()),
+      genesisContractSatoshis,
+      new Bytes(tokenContract.lockingScript.toHex()),
       tokenContractSatoshis,
       new Ripemd160(changeAddress.hashBuffer.toString("hex")),
       changeSatoshis
@@ -344,7 +437,12 @@ class FungibleToken {
     return tx;
   }
 
-  createRouteCheckContract(tokenOutputArray, tokenID, tokenCodeHash) {
+  createRouteCheckContract(
+    routeCheckType,
+    tokenOutputArray,
+    tokenID,
+    tokenCodeHash
+  ) {
     const nReceiverBuf = Buffer.alloc(1, 0);
     nReceiverBuf.writeUInt8(tokenOutputArray.length);
     let recervierArray = Buffer.alloc(0, 0);
@@ -358,9 +456,29 @@ class FungibleToken {
         amountBuf,
       ]);
     }
-    const routeCheckContract = new RouteCheckContractClass(
-      this.rabinPubKeyArray
-    );
+    let routeCheckContract;
+    if (routeCheckType == ROUTE_CHECK_TYPE_3To3) {
+      routeCheckContract = new RouteCheckContractClass_3To3(
+        this.rabinPubKeyArray
+      );
+    } else if (routeCheckType == ROUTE_CHECK_TYPE_6To6) {
+      routeCheckContract = new RouteCheckContractClass_6To6(
+        this.rabinPubKeyArray
+      );
+    } else if (routeCheckType == ROUTE_CHECK_TYPE_10To10) {
+      routeCheckContract = new RouteCheckContractClass_10To10(
+        this.rabinPubKeyArray
+      );
+    } else if (routeCheckType == ROUTE_CHECK_TYPE_3To100) {
+      routeCheckContract = new RouteCheckContractClass_3To100(
+        this.rabinPubKeyArray
+      );
+    } else if (routeCheckType == ROUTE_CHECK_TYPE_20To3) {
+      routeCheckContract = new RouteCheckContractClass_20To3(
+        this.rabinPubKeyArray
+      );
+    }
+
     const data = Buffer.concat([
       receiverTokenAmountArray,
       recervierArray,
@@ -377,8 +495,7 @@ class FungibleToken {
     utxos,
     changeAddress,
     feeb,
-    routeCheckContractLockingScript,
-    routeCheckContractSatoshis
+    routeCheckContract
   ) {
     const tx = new bsv.Transaction().from(
       utxos.map((utxo) => ({
@@ -390,20 +507,24 @@ class FungibleToken {
         ).toHex(),
       }))
     );
+
     tx.addOutput(
       new bsv.Transaction.Output({
-        script: routeCheckContractLockingScript,
-        satoshis: routeCheckContractSatoshis,
+        script: routeCheckContract.lockingScript,
+        satoshis: ScriptHelper.getDustThreshold(
+          routeCheckContract.lockingScript.toBuffer().length
+        ),
       })
     );
 
     tx.change(changeAddress);
     tx.fee(Math.ceil(tx._estimateSize() * feeb));
     tx.sign(utxoPrivateKey);
+
     return tx;
   }
 
-  createUnlockTokenTx(
+  createTransferTx(
     routeCheckTx,
     tokenInputArray,
     satoshiInputArray,
@@ -415,11 +536,7 @@ class FungibleToken {
     satoshiInputPrivKeyArray,
     tokenOutputArray,
     changeAddress,
-    tokenRabinMsg,
-    tokenRabinPaddingArray,
-    tokenRabinSigArray,
-    prevPrevTokenAddress,
-    prevPrevTokenAmount,
+    tokenRabinDatas,
     tokenContract,
     routeCheckContract,
     feeb
@@ -472,7 +589,6 @@ class FungibleToken {
 
     for (let i = 0; i < satoshiInputArray.length; i++) {
       const satoshiInput = satoshiInputArray[i];
-      console.log(satoshiInput, "input");
       const lockingScript = bsv.Script.fromBuffer(
         Buffer.from(satoshiInput.lockingScript, "hex")
       );
@@ -526,11 +642,14 @@ class FungibleToken {
       const tokenOutput = tokenOutputArray[i];
       const address = tokenOutput.address;
       const outputTokenAmount = tokenOutput.tokenAmount;
-      const outputSatoshis = tokenOutput.satoshis;
+
       const lockingScriptBuf = TokenProto.getNewTokenScript(
         inputTokenScript.toBuffer(),
         address.hashBuffer,
         outputTokenAmount
+      );
+      const outputSatoshis = ScriptHelper.getDustThreshold(
+        lockingScriptBuf.length
       );
       tx.addOutput(
         new bsv.Transaction.Output({
@@ -551,7 +670,6 @@ class FungibleToken {
       outputSatoshiArray = Buffer.concat([outputSatoshiArray, satoshiBuf]);
     }
 
-    console.log(changeAddress, "changeAddress");
     tx.change(changeAddress);
     tx.fee(
       Math.ceil(
@@ -563,9 +681,7 @@ class FungibleToken {
     );
     const changeSatoshis = tx.outputs[tx.outputs.length - 1].satoshis;
 
-    const sigtype =
-      bsv.crypto.Signature.SIGHASH_ALL | bsv.crypto.Signature.SIGHASH_FORKID;
-    const scriptInputIndex = tokenInputLen + satoshiInputArray.length;
+    const routeCheckInputIndex = tokenInputLen + satoshiInputArray.length;
     for (let i = 0; i < tokenInputLen; i++) {
       const senderPrivKey = senderPrivKeyArray[i];
       const tokenInput = tokenInputArray[i];
@@ -579,7 +695,7 @@ class FungibleToken {
         tokenScript.toASM(),
         satoshis,
         inIndex,
-        sigtype
+        sighashType
       );
 
       let sig = signTx(
@@ -588,38 +704,39 @@ class FungibleToken {
         tokenScript.toASM(),
         satoshis,
         inIndex,
-        sigtype
+        sighashType
       );
 
-      const unlockingScript = tokenContract
-        .unlock(
-          new SigHashPreimage(toHex(preimage)),
-          new Bytes(prevouts.toString("hex")),
-          new Bytes(tokenRabinMsg.toString("hex")),
-          tokenRabinPaddingArray,
-          tokenRabinSigArray,
-          rabinPubKeyIndexArray,
-          scriptInputIndex,
-          new Bytes(routeCheckTx.serialize()),
-          0,
-          tokenOutputLen,
-          new Bytes(prevPrevTokenAddress.hashBuffer.toString("hex")),
-          prevPrevTokenAmount,
-          new PubKey(toHex(senderPrivKey.publicKey)),
-          new Sig(toHex(sig)),
-          0,
-          new Bytes("00"),
-          0,
-          1
-        )
-        .toScript();
-      tx.inputs[inIndex].setScript(unlockingScript);
+      let tokenRanbinData = tokenRabinDatas[i];
+      const unlockingContract = tokenContract.unlock(
+        new SigHashPreimage(toHex(preimage)),
+        new Bytes(prevouts.toString("hex")),
+        new Bytes(tokenRanbinData.tokenRabinMsg.toString("hex")),
+        tokenRanbinData.tokenRabinPaddingArray,
+        tokenRanbinData.tokenRabinSigArray,
+        rabinPubKeyIndexArray,
+        routeCheckInputIndex,
+        new Bytes(routeCheckTx.serialize()),
+        0,
+        tokenOutputLen,
+        new Bytes(tokenInput.preTokenAddress.hashBuffer.toString("hex")),
+        tokenInput.preTokenAmount,
+        new PubKey(toHex(senderPrivKey.publicKey)),
+        new Sig(toHex(sig)),
+        0,
+        new Bytes("00"),
+        0,
+        1
+      );
+      // let ret = unlockingContract.verify();
+      // if (ret.success == false) throw ret;
+      // throw "success";
+      tx.inputs[inIndex].setScript(unlockingContract.toScript());
       //console.log('token transfer args:', toHex(preimage), toHex(senderPrivKey.publicKey), toHex(sig), tokenInputLen, prevouts.toString('hex'), rabinPubKey, rabinMsgArray.toString('hex'), rabinPaddingArray.toString('hex'), rabinSigArray.toString('hex'), tokenOutputLen, recervierArray.toString('hex'), receiverTokenAmountArray.toString('hex'), outputSatoshiArray.toString('hex'), changeSatoshis, changeAddress.hashBuffer.toString('hex'))
     }
 
     for (let i = 0; i < satoshiInputArray.length; i++) {
       const privKey = satoshiInputPrivKeyArray[i];
-      const outputIndex = satoshiInputArray[i].outputIndex;
       const hashData = bsv.crypto.Hash.sha256ripemd160(
         privKey.publicKey.toBuffer()
       );
@@ -628,7 +745,7 @@ class FungibleToken {
         tx,
         privKey,
         inputIndex,
-        sigtype,
+        sighashType,
         hashData
       );
       tx.inputs[inputIndex].addSignature(tx, sig[0]);
@@ -638,27 +755,29 @@ class FungibleToken {
       tx,
       routeCheckTx.outputs[0].script.toASM(),
       routeCheckTx.outputs[0].satoshis,
-      scriptInputIndex,
-      sigtype
+      routeCheckInputIndex,
+      sighashType
     );
-    const unlockingScript = routeCheckContract
-      .unlock(
-        new SigHashPreimage(toHex(preimage)),
-        tokenInputLen,
-        new Bytes(tokenInputArray[0].lockingScript),
-        new Bytes(prevouts.toString("hex")),
-        new Bytes(checkRabinMsgArray.toString("hex")),
-        new Bytes(checkRabinPaddingArray.toString("hex")),
-        new Bytes(checkRabinSigArray.toString("hex")),
-        rabinPubKeyIndexArray,
-        new Bytes(inputTokenAddressArray.toString("hex")),
-        new Bytes(inputTokenAmountArray.toString("hex")),
-        new Bytes(outputSatoshiArray.toString("hex")),
-        changeSatoshis,
-        new Ripemd160(changeAddress.hashBuffer.toString("hex"))
-      )
-      .toScript();
-    tx.inputs[scriptInputIndex].setScript(unlockingScript);
+
+    const unlockingContract = routeCheckContract.unlock(
+      new SigHashPreimage(toHex(preimage)),
+      tokenInputLen,
+      new Bytes(tokenInputArray[0].lockingScript),
+      new Bytes(prevouts.toString("hex")),
+      new Bytes(checkRabinMsgArray.toString("hex")),
+      new Bytes(checkRabinPaddingArray.toString("hex")),
+      new Bytes(checkRabinSigArray.toString("hex")),
+      rabinPubKeyIndexArray,
+      new Bytes(inputTokenAddressArray.toString("hex")),
+      new Bytes(inputTokenAmountArray.toString("hex")),
+      new Bytes(outputSatoshiArray.toString("hex")),
+      changeSatoshis,
+      new Ripemd160(changeAddress.hashBuffer.toString("hex"))
+    );
+    // let ret = unlockingContract.verify();
+    // if (ret.success == false) throw ret;
+    // throw "success";
+    tx.inputs[routeCheckInputIndex].setScript(unlockingContract.toScript());
     //console.log('token check contract args:', toHex(preimage), tokenInputLen, tokenInputArray[0].lockingScript.toBuffer().toString('hex'), prevouts.toString('hex'), checkRabinMsgArray.toString('hex'), checkRabinPaddingArray.toString('hex'), checkRabinSigArray.toString('hex'), inputTokenAddressArray.toString('hex'), inputTokenAmountArray.toString('hex'), outputSatoshiArray.toString('hex'), changeSatoshis, changeAddress.hashBuffer.toString('hex'))
 
     //console.log('createTokenTransferTx: ', tx.serialize())
@@ -669,4 +788,9 @@ class FungibleToken {
 module.exports = {
   FungibleToken,
   sighashType,
+  ROUTE_CHECK_TYPE_3To3,
+  ROUTE_CHECK_TYPE_6To6,
+  ROUTE_CHECK_TYPE_10To10,
+  ROUTE_CHECK_TYPE_3To100,
+  ROUTE_CHECK_TYPE_20To3,
 };

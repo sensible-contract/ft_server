@@ -1,63 +1,6 @@
 # sensible_ft_server
 
-## Notice!
-
-- 目前只有 genesis、issue 接口是可以正常运作，transfer 会验证失败，还在调试中。
-- 必须运行在 nodejs_12.0.0 以上，nodejs 版本切换后 npm 可能因为版本不兼容而无法正常工作，遇到时可以先切回来
-- 主网运行必须使用 metasv 接口，whatsonchain 不支持 transfer 的 10k 脚本
-- 本项目合约来自<a href="https://github.com/sensing-contract/token_sensible/blob/master/docs/token_cn.md">token_sensible</a>项目
-
-## Protocol
-
-#### TokenGenesis
-
-- FT 的定义和发行合约
-
-```
-[code part](variable)
-[data part](all 108 bytes)
-	[specific data for proto_type](all 96 bytes)
-		token_name		(20 bytes) token的名称,如Bitcoin
-		token_symbol 	(10 bytes) token的缩写,如BTC
-		is_genesis		(1 bytes)  是否是根节点
-		decimal_num 	(1 bytes)  token的小数位数
-		token_address 	(20 bytes) token所属的地址
-		token_amount  	(8 bytes)  token的数量
-		token_id 		(36 bytes) 32字节的txid和4字节的output_index组成，即outpoint。
-	[proto header](all 12 bytes)
-		proto_type 		(4 bytes)  协议类型 1
-		proto_flag 		(8 bytes)  固定的字符串'oraclesv';
-```
-
-#### Token
-
-- FT 的具体实例，根据 token_address 区别持有人
-
-```
-  [code part](variable)
-  [data part](all 108 bytes)
-  	[specific data for proto_type](all 96 bytes)
-  		token_name		(20 bytes) token的名称,如Bitcoin
-  		token_symbol 	(10 bytes) token的缩写,如BTC
-  		is_genesis		(1 bytes)  是否是根节点
-  		decimal_num 	(1 bytes)  token的小数位数
-  		token_address 	(20 bytes) token所属的地址
-  		token_amount  	(8 bytes)  token的数量
-  		token_id 		(36 bytes) 32字节的txid和4字节的output_index组成，即outpoint。
-  	[proto header](all 12 bytes)
-  		proto_type 		(4 bytes)  协议类型 1
-  		proto_flag 		(8 bytes)  固定的字符串'oraclesv';
-```
-
-#### TokenRouteCheck
-
-- 无状态合约
-
-```
-
-[code part](variable)
-
-```
+A Demo of <a href="https://github.com/sensing-contract/token_sensible/blob/master/docs/token_cn.md">token_sensible</a>
 
 ## How to Build
 
@@ -79,29 +22,33 @@ Here is a example for config
 
 ```
 
-src/config/nft.json
+src/config/ft.json
 {
-"default": {
-"wif": "cN2gor4vF2eQ1PmzTzJEwps6uvTK4QToUgTxGHN1xUxZ34djL8vR",//发行私钥
-"apiTarget": "whatsonchain",//可选 api：whatsonchain,metasv
-"network": "test",//可选网络：test,main
-"feeb": 0.5,//手续费率
-"minSplit": 80,//utxo 最低拆分数量
-"maxSplit": 100,//utxo 最大拆分数量
-"unitSatoshis": 10000,//拆分的每个 utxo 所含金额
-"contractSatoshis": 1000, //合约输出所含金额
-},
-"production": {//可以追加其他的配置，在启动的时候需要指定 env=production
-"wif": "",
-"cryptedWif":"U2FsdGVkX1++zNjes6yFJqGdLSTLegCgdDevX3UVkYYia1tCbqebSwtLKkUP7BVt8eutVcTAAn4Bm83V/fdgvD7UpBpxzQldAHbkdPGK35I=",//to avoid expose wif
-"apiTarget": "whatsonchain",
-"network": "main",
-"feeb": 0.5,
-"minSplit": 80,
-"maxSplit": 100,
-"unitSatoshis": 30000,
-"contractSatoshis": 3000,
-}
+  "default": {
+    "wif": "L2YWukZEh9b7wLMLRrZWnaEZCHaTMXnQAH75ZuvhrTvAeFa6vxMM",
+    "apiTarget": "metasv",//metasv,whatsonchain
+    "network": "main",//main,test
+    "feeb": 0.5,
+    "minSplit": 30,
+    "maxSplit": 100,
+    "unitSatoshis": 20000,
+    "oracles": [//all three oracles but we only need two rabinSigs to unlock the contract
+      {
+        "satotxApiPrefix": "https://api.satotx.com",
+        "satotxPubKey": "25108ec89eb96b99314619eb5b124f11f00307a833cda48f5ab1865a04d4cfa567095ea4dd47cdf5c7568cd8efa77805197a67943fe965b0a558216011c374aa06a7527b20b0ce9471e399fa752e8c8b72a12527768a9fc7092f1a7057c1a1514b59df4d154df0d5994ff3b386a04d819474efbd99fb10681db58b1bd857f6d5"
+      },
+      {
+        "satotxApiPrefix": "https://api.satotx.com",
+        "satotxPubKey": "25108ec89eb96b99314619eb5b124f11f00307a833cda48f5ab1865a04d4cfa567095ea4dd47cdf5c7568cd8efa77805197a67943fe965b0a558216011c374aa06a7527b20b0ce9471e399fa752e8c8b72a12527768a9fc7092f1a7057c1a1514b59df4d154df0d5994ff3b386a04d819474efbd99fb10681db58b1bd857f6d5"
+      },
+      {
+        "satotxApiPrefix": "https://api.satotx.com",
+        "satotxPubKey": "25108ec89eb96b99314619eb5b124f11f00307a833cda48f5ab1865a04d4cfa567095ea4dd47cdf5c7568cd8efa77805197a67943fe965b0a558216011c374aa06a7527b20b0ce9471e399fa752e8c8b72a12527768a9fc7092f1a7057c1a1514b59df4d154df0d5994ff3b386a04d819474efbd99fb10681db58b1bd857f6d5"
+      }
+    ],
+    "oracleSelecteds": [0, 1] //the oracle index selected to use
+  },
+  ...
 }
 
 ```
@@ -132,11 +79,11 @@ node src/app.js env=production
 
 - params
 
-| param       | required | type   | note     |
-| ----------- | -------- | ------ | -------- |
-| tokenName   | true     | string | 20 bytes |
-| tokenSymbol | true     | number | 10 bytes |
-| decimalNum  | true     | number | 1 bytes  |
+| param       | required | type         | note     |
+| ----------- | -------- | ------------ | -------- |
+| tokenName   | true     | string       | 20 bytes |
+| tokenSymbol | true     | string       | 10 bytes |
+| decimalNum  | true     | unsigned int | 1 bytes  |
 
 - req
 
@@ -164,19 +111,21 @@ curl -X POST  -H "Content-Type: application/json" --data '{
 
 - params
 
-| param           | required | type   | note             |
-| --------------- | -------- | ------ | ---------------- |
-| genesisId       | true     | string | genesisId        |
-| tokenAmount     | true     | string | token amount     |
-| receiverAddress | true     | string | receiver address |
+| param                | required | type           | note                 |
+| -------------------- | -------- | -------------- | -------------------- |
+| genesisId            | true     | string         | genesisId            |
+| tokenAmount          | true     | unsigned int64 | token amount         |
+| receiverAddress      | true     | string         | receiver address     |
+| allowIssueInAddition | true     | bool           | allow to issue again |
 
 - req
 
 ```shell
 curl -X POST -H "Content-Type: application/json" --data '{
     "genesisId":"4e1edf5b89300210001ed6f7c7398a0222faefebb24a4c35c14cd47ad39bfd1d",
-    "tokenAmount":100,
-    "receiverAddress":"1MzEyAMS3eM63gMcc9AVjZSEu4j3KYpBVQ"
+    "tokenAmount":"100",
+    "receiverAddress":"1MzEyAMS3eM63gMcc9AVjZSEu4j3KYpBVQ",
+    "allowIssueInAddition":false
 }' http://127.0.0.1:8092/api/ft/issue
 ```
 
@@ -210,7 +159,7 @@ curl -X POST -H "Content-Type: application/json" --data '{
     "senderWif":"L2YWukZEh9b7wLMLRrZWnaEZCHaTMXnQAH75ZuvhrTvAeFa6vxMM",
     "receivers":[{
     	"address":"1MzEyAMS3eM63gMcc9AVjZSEu4j3KYpBVQ",
-    	"amount":2
+    	"amount":"20"
     }]
 }' http://127.0.0.1:8092/api/ft/transfer
 ```

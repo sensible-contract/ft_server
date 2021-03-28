@@ -36,6 +36,8 @@ library RabinUtil {
     int verifyCount = 0;
     int i = 0;
     int paddingPos = 0;
+
+    require(rabinPubKeyIndexArray[0] != rabinPubKeyIndexArray[1]);
     loop(2) {
       int pubIndex = rabinPubKeyIndexArray[i];
       int rabinPubKey = rabinPubKeyArray[pubIndex];
@@ -118,16 +120,17 @@ library RabinUtil {
     ): bool {
     int i = 0;
     int verifyCount = 0;
+    require(rabinPubKeyIndexArray[0] != rabinPubKeyIndexArray[1]);
     loop(2) {
       int pubIndex = rabinPubKeyIndexArray[i];
       int rabinPubKey = rabinPubKeyArray[pubIndex];
-      i += 1;
       int rabinSig = rabinSigArray[i];
       bytes padding = rabinPaddingArray[i];
       int h = RabinUtil.rabinHash(rabinMsg + padding);
       if ((rabinSig * rabinSig) % rabinPubKey == h % rabinPubKey) {
         verifyCount += 1;
       }
+      i += 1;
     }
     require(verifyCount == 2);
 

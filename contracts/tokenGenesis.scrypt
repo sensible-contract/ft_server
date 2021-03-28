@@ -20,10 +20,10 @@ contract TokenGenesis {
     int changeSatoshis
     ) {
 
-    // require(Tx.checkPreimage(txPreimage));
+    require(Tx.checkPreimage(txPreimage));
 
     // check sig
-    // require(checkSig(sig, this.pubKey));
+    require(checkSig(sig, this.pubKey));
 
     // check input script oracle data
     bytes genesisScript = Util.scriptCode(txPreimage);

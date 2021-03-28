@@ -15,8 +15,18 @@ exports.default = function () {
     "POST",
     "/api/ft/issue",
     async function (req, res, params, body) {
-      const { genesisId, tokenAmount, receiverAddress } = body;
-      return await FtMgr.issue(genesisId, tokenAmount, receiverAddress);
+      const {
+        genesisId,
+        tokenAmount,
+        receiverAddress,
+        allowIssueInAddition,
+      } = body;
+      return await FtMgr.issue(
+        genesisId,
+        tokenAmount,
+        receiverAddress,
+        allowIssueInAddition
+      );
     }
   );
 

@@ -14,7 +14,7 @@ const {
 const { ScriptHelper } = require("../sensible_nft/ScriptHelper");
 
 const TokenProto = require("./tokenProto");
-
+const Proto = require("./protoheader");
 const TokenUtil = module.exports;
 
 TokenUtil.RABIN_SIG_LEN = 128;
@@ -23,7 +23,7 @@ const genesisFlag = Buffer.from("01", "hex");
 const nonGenesisFlag = Buffer.from("00", "hex");
 const tokenType = Buffer.alloc(4, 0);
 tokenType.writeUInt32LE(1);
-const PROTO_FLAG = Buffer.from("oraclesv");
+const PROTO_FLAG = Proto.PROTO_FLAG;
 // MSB of the sighash  due to lower S policy
 const MSB_THRESHOLD = 0x7e;
 

@@ -1,5 +1,5 @@
 const { app } = require("../app");
-const { bsv, Bytes } = require("scryptlib");
+const { bsv, Bytes, toHex } = require("scryptlib");
 const { UtxoMgr } = require("./UtxoMgr");
 const TokenUtil = require("../lib/sensible_ft/tokenUtil");
 const { PrivateKeyMgr } = require("./PrivateKeyMgr");
@@ -8,26 +8,35 @@ const { ErrCode } = require("../const");
 const { IssuerDao } = require("../dao/IssuerDao");
 const { UtxoDao } = require("../dao/UtxoDao");
 const { ScriptHelper } = require("../lib/sensible_nft/ScriptHelper");
-const { FungibleToken } = require("../lib/sensible_ft/FungibleToken");
+const {
+  FungibleToken,
+  ROUTE_CHECK_TYPE_3To3,
+  ROUTE_CHECK_TYPE_6To6,
+  ROUTE_CHECK_TYPE_10To10,
+  ROUTE_CHECK_TYPE_3To100,
+  ROUTE_CHECK_TYPE_20To3,
+} = require("../lib/sensible_ft/FungibleToken");
 const { FungibleTokenDao } = require("../dao/FungibleTokenDao");
 const TokenProto = require("../lib/sensible_ft/tokenProto");
 const { toBufferLE } = require("bigint-buffer");
+
+const sizeOfGenesis = 4077;
+
 class FtMgr {
   /**
-   * 初始化token
-   * @param {string} tokenName token名称
-   * @param {string} tokenSymbol token缩写符号
-   * @param {number} decimalNum 指定小数部分位数
+   * genesis
+   * @param {string} tokenName token name.
+   * @param {string} tokenSymbol token symbol.
+   * @param {number} decimalNum the token amount decimal number.1 bytes
    * @returns
    */
   static async genesis(tokenName, tokenSymbol, decimalNum) {
-    const estimateSatoshis =
-      app.get("ftConfig").feeb * 4200 * 1 +
-      app.get("ftConfig").contractSatoshis * 1;
+    const config = app.get("ftConfig");
+    const estimateSatoshis = config.feeb * 4280 + 2000;
     return await UtxoMgr.tryUseUtxos(estimateSatoshis, async (utxos) => {
       const utxo = utxos[0];
       const utxoTxId = utxo.txId;
-      const utxoOutputIndex = utxo.outputIndex;
+
       let preUtxoTxHex = await ScriptHelper.blockChainApi.getRawTxData(
         utxoTxId
       );
@@ -35,34 +44,36 @@ class FtMgr {
       const issuerPubKey = PrivateKeyMgr.privateKey.publicKey;
       const utxoPrivateKey = PrivateKeyMgr.privateKey;
       const changedAddress = PrivateKeyMgr.privateKey.toAddress();
-      const feeb = app.get("ftConfig").feeb;
-      const genesisContractSatoshis = 3000;
+      const feeb = config.feeb;
 
-      let ft = new FungibleToken();
+      let ft = new FungibleToken(
+        BigInt("0x" + config.oracles[0].satotxPubKey),
+        BigInt("0x" + config.oracles[1].satotxPubKey),
+        BigInt("0x" + config.oracles[2].satotxPubKey)
+      );
 
-      //创建genesis合约
-      let genesisContract = ft.createGenesisContract(
-        issuerPubKey,
+      //create genesis contract
+      let genesisContract = ft.createGenesisContract(issuerPubKey, {
         tokenName,
         tokenSymbol,
-        decimalNum
-      );
-      //创建genesis交易
+        decimalNum,
+      });
+
+      //create genesis tx
       let tx = ft.createGenesisTx(
         utxoPrivateKey,
         utxos,
         changedAddress,
         feeb,
-        genesisContract.lockingScript,
-        genesisContractSatoshis
+        genesisContract
       );
 
       let txid = await ScriptHelper.sendTx(tx);
 
-      //db保存发行信息
+      //save genesis info
       IssuerDao.insertIssuer({
         genesisId: txid,
-        genesisTxId: utxoTxId,
+        genesisTxId: txid,
         genesisOutputIndex: 0,
         preTxId: utxoTxId,
         preOutputIndex: 0,
@@ -86,31 +97,31 @@ class FtMgr {
    * @param {string} genesisId token唯一标识
    * @param {number} tokenAmount 此次要发行的数量，如果发行数量为0，则表示不再允许增发
    * @param {string} address 接受者的地址
+   * @param {string} allowIssueInAddition 是否允许继续增发
    * @returns
    */
-  static async issue(genesisId, tokenAmount, address) {
-    const estimateSatoshis = app.get("ftConfig").feeb * 8000 * 2 + 8000 * 2;
+  static async issue(genesisId, tokenAmount, address, allowIssueInAddition) {
+    const config = app.get("ftConfig");
+    const estimateSatoshis = config.feeb * 22969 + 2000;
     return await UtxoMgr.tryUseUtxos(estimateSatoshis, async (utxos) => {
       let issuer = await IssuerDao.getIssuer(genesisId);
+      if (!issuer) {
+        throw `invalid genesisId:${genesisId}`;
+      }
       const genesisTx = new bsv.Transaction(issuer.txHex);
       const genesisLockingScript = genesisTx.outputs[0].script;
       const receiverAddress = bsv.Address.fromString(
         address,
-        app.get("ftConfig").network == "main" ? "livenet" : "testnet"
+        config.network == "main" ? "livenet" : "testnet"
       );
 
       const issuerPrivKey = PrivateKeyMgr.privateKey;
       const issuerPubKey = PrivateKeyMgr.privateKey.publicKey;
-      const genesisTxId = issuer.txId;
-      const genesisOutputIndex = issuer.outputIndex;
+      const genesisTxId = issuer.genesisTxId;
+      const genesisOutputIndex = issuer.genesisOutputIndex;
       const utxoPrivateKey = PrivateKeyMgr.privateKey;
       const changedAddress = PrivateKeyMgr.privateKey.toAddress();
-      const feeb = app.get("ftConfig").feeb;
-      const genesisContractSatoshis = 3000;
-      const tokenContractSatoshis = 8000;
-      const tokenName = issuer.tokenName;
-      const tokenSymbol = issuer.tokenSymbol;
-      const decimalNum = issuer.decimalNum;
+      const feeb = config.feeb;
 
       const preUtxoTxId = issuer.preTxId;
       const preUtxoOutputIndex = issuer.preOutputIndex;
@@ -119,30 +130,40 @@ class FtMgr {
       const spendByOutputIndex = issuer.outputIndex;
       const spendByTxHex = issuer.txHex;
 
-      let ft = new FungibleToken();
-      //创建genesis合约，用于校验
-      let genesisContract = ft.createGenesisContract(
-        issuerPubKey,
-        tokenName,
-        tokenSymbol,
-        decimalNum
+      let ft = new FungibleToken(
+        BigInt("0x" + config.oracles[0].satotxPubKey),
+        BigInt("0x" + config.oracles[1].satotxPubKey),
+        BigInt("0x" + config.oracles[2].satotxPubKey)
       );
+
+      //重新构建要解锁的genesis合约
+      let oracleDataObj = TokenProto.parseOracleData(
+        genesisLockingScript.toBuffer()
+      );
+      let genesisContract = ft.createGenesisContract(issuerPubKey);
+      const oracleData = TokenProto.newOracleData(oracleDataObj);
+      genesisContract.setDataPart(oracleData.toString("hex"));
+
       //创建token合约
       let tokenContract = ft.createTokenContract(
         genesisTxId,
         genesisOutputIndex,
-        genesisLockingScript,
-        receiverAddress,
-        tokenAmount
+        genesisContract,
+        {
+          receiverAddress,
+          tokenAmount: BigInt(tokenAmount),
+        }
       );
       const genesisUtxo = {
-        txId: issuer.txId,
-        outputIndex: issuer.outputIndex,
-        satoshis: 3000,
+        txId: genesisTxId,
+        outputIndex: genesisOutputIndex,
+        satoshis: ScriptHelper.getDustThreshold(
+          genesisContract.lockingScript.toBuffer().length
+        ),
       };
+
       //创建token：解锁genesis，产出新的genesis合约UTXO和token合约UTXO
-      let tx = await ft.createTokenTx(
-        issuer.preTxId == issuer.genesisTxId,
+      let tx = await ft.createIssueTx(
         genesisContract,
         issuerPrivKey,
         genesisOutputIndex,
@@ -153,15 +174,15 @@ class FtMgr {
         changedAddress,
         feeb,
         tokenContract,
-        genesisContractSatoshis,
-        tokenContractSatoshis,
+        allowIssueInAddition,
         {
           index: preUtxoOutputIndex,
           txId: preUtxoTxId,
           txHex: preUtxoTxHex,
           byTxId: spendByTxId,
           byTxHex: spendByTxHex,
-        }
+        },
+        config.oracleSelecteds
       );
 
       let txid = await ScriptHelper.sendTx(tx);
@@ -175,21 +196,26 @@ class FtMgr {
       });
 
       //保存产出的token合约UTXO的信息
-      FungibleTokenDao.addUtxos(genesisId, [
+      FungibleTokenDao.addUtxos(address, [
         {
+          genesisId,
           txId: txid,
-          satoshis: tokenContractSatoshis,
+          satoshis: tx.outputs[1].satoshis,
           outputIndex: 1, //固定在1号位
           rootHeight: 0,
           lockingScript: tx.outputs[1].script.toHex(),
           txHex: tx.serialize(),
+          tokenAddress: address,
+          tokenAmount: tokenAmount,
           preTxId: spendByTxId,
           preOutputIndex: spendByOutputIndex,
           preTxHex: spendByTxHex,
-          tokenAmount: tokenAmount,
+          preTokenAddress: address,
+          preTokenAmount: 0,
         },
       ]);
 
+      console.log("issue success", txid);
       return {
         txId: txid,
       };
@@ -203,81 +229,128 @@ class FtMgr {
    * @returns
    */
   static async transfer(genesisId, senderWif, receivers) {
+    const config = app.get("ftConfig");
     let issuer = await IssuerDao.getIssuer(genesisId);
+    if (!issuer) {
+      throw "invalid genesisId";
+    }
     const genesisTx = new bsv.Transaction(issuer.txHex);
     const genesisLockingScript = genesisTx.outputs[0].script;
 
-    const issuerPrivKey = PrivateKeyMgr.privateKey;
-    const issuerPubKey = PrivateKeyMgr.privateKey.publicKey;
-    const genesisTxId = issuer.txId;
-    const genesisOutputIndex = issuer.outputIndex;
+    const genesisTxId = issuer.genesisTxId;
+    const genesisOutputIndex = issuer.genesisOutputIndex;
+    const senderPrivateKey = PrivateKeyMgr.privateKey;
     const utxoPrivateKey = PrivateKeyMgr.privateKey; //new bsv.PrivateKey.fromWIF(senderWif);
     const changedAddress = PrivateKeyMgr.privateKey.toAddress();
-    const feeb = app.get("ftConfig").feeb;
-    const genesisContractSatoshis = 3000;
-    const tokenContractSatoshis = 8000;
-    const routeCheckContractSatoshis = 8000;
-    const tokenName = issuer.tokenName;
-    const tokenSymbol = issuer.tokenSymbol;
-    const decimalNum = issuer.decimalNum;
+    const feeb = config.feeb;
+    const issuerPubKey = PrivateKeyMgr.privateKey.publicKey;
+    let ft = new FungibleToken(
+      BigInt("0x" + config.oracles[0].satotxPubKey),
+      BigInt("0x" + config.oracles[1].satotxPubKey),
+      BigInt("0x" + config.oracles[2].satotxPubKey)
+    );
 
-    const preUtxoTxId = issuer.preTxId;
-    const preUtxoOutputIndex = issuer.preOutputIndex;
-    const preUtxoTxHex = issuer.preTxHex;
-    const spendByTxId = issuer.txId;
-    const spendByOutputIndex = issuer.outputIndex;
-    const spendByTxHex = issuer.txHex;
-
-    let ft = new FungibleToken();
-
+    const network = config.network == "main" ? "livenet" : "testnet";
     let tokenOutputArray = receivers.map((v) => ({
-      address: bsv.Address.fromString(
-        v.address,
-        app.get("ftConfig").network == "main" ? "livenet" : "testnet"
-      ),
+      address: bsv.Address.fromString(v.address, network),
       tokenAmount: v.amount,
-      satoshis: tokenContractSatoshis,
     }));
-    let ftUtxos;
-    let estimateSatoshis = app.get("ftConfig").feeb * 8000 + 4000;
+
+    let ftUtxos = [];
+    let estimateSatoshis = config.feeb * 6446 + 6000;
     let routeCheckContract;
-    //
-    /**
-     * 先创建用于检查token数量的合约
-     * 应该准备三份CheckRoute合约
-     * 3输入3输出
-     * 3输入20输出
-     * 20输入3输出
-     * 根据输入和输出的数量动态选择
-     * 这里还没实现！！！
-     */
+
     let routeCheckTx = await UtxoMgr.tryUseUtxos(
       estimateSatoshis,
       async (utxos) => {
-        ftUtxos = await FungibleTokenDao.getUtxos(genesisId);
-        //创建检查token数量的RouteCheck合约
-        routeCheckContract = ft.createRouteCheckContract(
-          tokenOutputArray,
-          Buffer.from(issuer.genesisId),
-          TokenProto.getContractCodeHash(Buffer.from(ftUtxos[0].lockingScript))
+        let outputTokenAmountSum = tokenOutputArray.reduce(
+          (pre, cur) => pre + cur.tokenAmount,
+          0
         );
-        //创建交易并广播
-        let routeCheckTx = ft.createRouteCheckTx(
+
+        let _ftUtxos = await FungibleTokenDao.getUtxos(
+          senderPrivateKey.toAddress().toString(),
+          genesisId
+        );
+        let inputTokenAmountSum = 0;
+        for (let i = 0; i < _ftUtxos.length; i++) {
+          let ftUtxo = _ftUtxos[i];
+          ftUtxos.push(ftUtxo);
+          inputTokenAmountSum += ftUtxo.tokenAmount;
+          if (inputTokenAmountSum >= outputTokenAmountSum) {
+            break;
+          }
+        }
+
+        if (inputTokenAmountSum < outputTokenAmountSum) {
+          throw "insufficent token";
+        }
+        let changeTokenAmount = inputTokenAmountSum - outputTokenAmountSum;
+        if (changeTokenAmount > 0) {
+          tokenOutputArray.push({
+            address: changedAddress,
+            tokenAmount: changeTokenAmount,
+          });
+        }
+
+        let routeCheckType;
+        if (ftUtxos.length <= 3) {
+          if (tokenOutputArray.length <= 3) {
+            routeCheckType = ROUTE_CHECK_TYPE_3To3;
+          } else if (tokenOutputArray.length <= 100) {
+            routeCheckType = ROUTE_CHECK_TYPE_3To100;
+          } else {
+            throw "unsupport token output count";
+          }
+        } else if (ftUtxos.length <= 6) {
+          if (tokenOutputArray.length <= 6) {
+            routeCheckType = ROUTE_CHECK_TYPE_6To6;
+          } else {
+            throw "unsupport token output count";
+          }
+        } else if (ftUtxos.length <= 10) {
+          if (tokenOutputArray.length <= 10) {
+            routeCheckType = ROUTE_CHECK_TYPE_10To10;
+          } else {
+            throw "unsupport token output count";
+          }
+        } else if (ftUtxos.length <= 20) {
+          if (tokenOutputArray.length <= 3) {
+            routeCheckType = ROUTE_CHECK_TYPE_20To3;
+          } else {
+            throw "unsupport token output count";
+          }
+        } else {
+          throw "unsupport token input count";
+        }
+
+        console.log(routeCheckType);
+        //create routeCheck contract
+        routeCheckContract = ft.createRouteCheckContract(
+          routeCheckType,
+          tokenOutputArray,
+          TokenProto.newTokenID(genesisTxId, genesisOutputIndex),
+          TokenProto.getContractCodeHash(
+            Buffer.from(ftUtxos[0].lockingScript, "hex")
+          )
+        );
+
+        //create routeCheck tx
+        let tx = ft.createRouteCheckTx(
           utxoPrivateKey,
           utxos,
           changedAddress,
           feeb,
-          routeCheckContract.lockingScript,
-          routeCheckContractSatoshis
+          routeCheckContract
         );
-        // throw "SUCCESS1";
-        let txid = await ScriptHelper.sendTx(routeCheckTx);
-        return routeCheckTx;
+        let txid = await ScriptHelper.sendTx(tx);
+        // console.log("routeCheckTx", txid);
+        return tx;
       }
     );
 
     //拿到上面一笔检查合约后才可以进行接下来的token转移
-    estimateSatoshis = app.get("ftConfig").feeb * 8000 * 3;
+    estimateSatoshis = config.feeb * 35846 + 2000 + 20000;
     return await UtxoMgr.tryUseUtxos(estimateSatoshis, async (utxos) => {
       //此次转移要用到的token合约utxo
       const tokenInputArray = ftUtxos.map((v) => ({
@@ -285,6 +358,8 @@ class FtMgr {
         satoshis: v.satoshis,
         txId: v.txId,
         outputIndex: v.outputIndex,
+        preTokenAddress: bsv.Address.fromString(v.preTokenAddress, network),
+        preTokenAmount: BigInt(v.preTokenAmount),
       }));
 
       //此次转移要用到的utxo
@@ -302,58 +377,85 @@ class FtMgr {
       let checkRabinPaddingArray = Buffer.alloc(0);
       let checkRabinSigArray = Buffer.alloc(0);
 
-      let dummyInfo;
       for (let i = 0; i < ftUtxos.length; i++) {
         let v = ftUtxos[i];
-        //对于每个token合约utxo，都需要两组不同签名器，但这里只用了同一组，后续还需要修改
-        let sigInfo = await ScriptHelper.satoTxSigUTXOSpendBy({
-          txId: v.preTxId,
-          index: v.preOutputIndex,
-          txHex: v.preTxHex,
-          byTxId: v.txId,
-          byTxHex: v.txHex,
-        });
-        dummyInfo = sigInfo;
-        checkRabinMsgArray = Buffer.concat([
-          checkRabinMsgArray,
-          Buffer.from(sigInfo.payload),
-        ]);
 
         for (let j = 0; j < 2; j++) {
+          const signerIndex = config.oracleSelecteds[j];
+          let sigInfo = await ScriptHelper.signers[signerIndex].satoTxSigUTXO({
+            txId: v.txId,
+            index: v.outputIndex,
+            txHex: v.txHex,
+          });
+          if (j == 0) {
+            checkRabinMsgArray = Buffer.concat([
+              checkRabinMsgArray,
+              Buffer.from(sigInfo.payload, "hex"),
+            ]);
+          }
+
           const sigBuf = toBufferLE(sigInfo.sigBE, TokenUtil.RABIN_SIG_LEN);
           checkRabinSigArray = Buffer.concat([checkRabinSigArray, sigBuf]);
-          const paddingCountBuf = Buffer.alloc(4, 0);
-          paddingCountBuf.writeUInt16LE(sigInfo.padding);
+          const paddingCountBuf = Buffer.alloc(2, 0);
+          paddingCountBuf.writeUInt16LE(sigInfo.padding.length / 2);
+          const padding = Buffer.alloc(sigInfo.padding.length / 2, 0);
+          padding.write(sigInfo.padding, "hex");
           checkRabinPaddingArray = Buffer.concat([
             checkRabinPaddingArray,
             paddingCountBuf,
+            padding,
           ]);
         }
       }
 
-      //解锁token合约UTXO时，需要进行合法性校验，以下是校验数据
-      const tokenRabinMsg = dummyInfo.payload;
-      const tokenRabinSigArray = [
-        BigInt("0x" + dummyInfo.sigBE),
-        BigInt("0x" + dummyInfo.sigBE),
-      ];
-      const tokenRabinPaddingArray = [
-        new Bytes(dummyInfo.padding),
-        new Bytes(dummyInfo.padding),
-      ];
-      const prevPrevTokenAddress = utxoPrivateKey.toAddress();
-      const prevPrevTokenAmount = 0;
+      // throw "end";
+      const tokenRabinDatas = [];
+      for (let i = 0; i < ftUtxos.length; i++) {
+        let v = ftUtxos[i];
+        let tokenRabinMsg;
+        let tokenRabinSigArray = [];
+        let tokenRabinPaddingArray = [];
+        for (let j = 0; j < 2; j++) {
+          const signerIndex = config.oracleSelecteds[j];
+          let sigInfo = await ScriptHelper.signers[
+            signerIndex
+          ].satoTxSigUTXOSpendBy({
+            txId: v.preTxId,
+            index: v.preOutputIndex,
+            txHex: v.preTxHex,
+            byTxId: v.txId,
+            byTxHex: v.txHex,
+          });
+          tokenRabinMsg = sigInfo.payload;
+          tokenRabinSigArray.push(BigInt("0x" + sigInfo.sigBE));
+          tokenRabinPaddingArray.push(new Bytes(sigInfo.padding));
+        }
 
-      let rabinPubKeyIndexArray = [0, 1];
+        tokenRabinDatas.push({
+          tokenRabinMsg,
+          tokenRabinSigArray,
+          tokenRabinPaddingArray,
+        });
+      }
+
+      let rabinPubKeyIndexArray = config.oracleSelecteds;
+
+      //重新构建要解锁的genesis合约
+      let oracleDataObj = TokenProto.parseOracleData(
+        genesisLockingScript.toBuffer()
+      );
+      let genesisContract = ft.createGenesisContract(issuerPubKey);
+      const oracleData = TokenProto.newOracleData(oracleDataObj);
+      genesisContract.setDataPart(oracleData.toString("hex"));
 
       //创建token合约
       let tokenContract = ft.createTokenContract(
         genesisTxId,
         genesisOutputIndex,
-        genesisLockingScript
+        genesisContract
       );
       //创建tx
-      let tx = await ft.createUnlockTokenTx(
+      let tx = await ft.createTransferTx(
         routeCheckTx,
         tokenInputArray,
         satoshiInputArray,
@@ -365,11 +467,7 @@ class FtMgr {
         utxos.map((v) => utxoPrivateKey),
         tokenOutputArray,
         changedAddress,
-        tokenRabinMsg,
-        tokenRabinPaddingArray,
-        tokenRabinSigArray,
-        prevPrevTokenAddress,
-        prevPrevTokenAmount,
+        tokenRabinDatas,
         tokenContract,
         routeCheckContract,
         feeb
@@ -377,30 +475,36 @@ class FtMgr {
 
       let txid = await ScriptHelper.sendTx(tx);
       //db更新token合约UTXO的信息
-      receivers.forEach((v, index) => {
-        FungibleTokenDao.addUtxos(genesisId, [
+      tokenOutputArray.forEach((v, index) => {
+        FungibleTokenDao.addUtxos(v.address.toString(), [
           {
+            genesisId,
             txId: txid,
-            satoshis: tokenContractSatoshis,
+            satoshis: tx.outputs[index].satoshis,
             outputIndex: index,
             rootHeight: 0,
             lockingScript: tx.outputs[index].script.toHex(),
+            tokenAddress: v.address.toString(),
             tokenAmount: v.tokenAmount,
             txHex: tx.serialize(),
-            preTxId: "",
-            preOutputIndex: 0,
-            preTxHex: "",
+            preTxId: ftUtxos[0].txId,
+            preOutputIndex: ftUtxos[0].outputIndex,
+            preTxHex: ftUtxos[0].txHex,
+            preTokenAddress: ftUtxos[0].tokenAddress,
+            preTokenAmount: ftUtxos[0].tokenAmount,
           },
         ]);
       });
 
       ftUtxos.forEach((v) => {
         FungibleTokenDao.removeUtxo(
-          utxoPrivateKey.toAddress().toString(),
+          senderPrivateKey.toAddress().toString(),
           v.txId,
           v.outputIndex
         );
       });
+
+      console.log("transfer success", txid);
 
       return {
         txId: txid,

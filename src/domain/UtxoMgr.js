@@ -2,11 +2,14 @@ const { bsv } = require("scryptlib");
 const { app } = require("../app");
 const { ErrCode } = require("../const");
 const { UtxoDao } = require("../dao/UtxoDao");
-const { sighashType } = require("../lib/sensible_nft/NFT");
 const { ScriptHelper } = require("../lib/sensible_nft/ScriptHelper");
 const { CodeError } = require("../util/CodeError");
 const { PrivateKeyMgr } = require("./PrivateKeyMgr");
-
+const Signature = bsv.crypto.Signature;
+const sighashType =
+  Signature.SIGHASH_ANYONECANPAY |
+  Signature.SIGHASH_ALL |
+  Signature.SIGHASH_FORKID;
 const MIN_FEE = 546;
 class UtxoMgr {
   static get balance() {
@@ -69,6 +72,9 @@ class UtxoMgr {
       Math.floor(utxo.satoshis / unitSatoshis),
       app.get("ftConfig").maxSplit - this.utxos.length
     );
+    if (toSplitCount < 2) {
+      throw "can not split";
+    }
 
     // 提取该UTXO，防止被其他并发操作使用
     utxo = this.utxos.splice(0, 1)[0];
@@ -145,16 +151,32 @@ class UtxoMgr {
    * @returns
    */
   static fetchUtxos(estimateSatoshis) {
-    this.utxos.sort((a, b) => a.rootHeight - b.rootHeight); //从浅到深
+    if (!this.utxos) return [];
+    // this.utxos.sort((a, b) => a.rootHeight - b.rootHeight); //从浅到深
     let sum = 0;
     let utxos = [];
-    for (let i = 0; i < this.utxos.length; i++) {
-      sum += this.utxos[i].satoshis;
-      if (sum >= estimateSatoshis) {
-        utxos = this.utxos.splice(0, i + 1);
+    console.log(estimateSatoshis);
+
+    this.utxos.sort((a, b) => b.satoshis - a.satoshis); //从浅到深
+    let c = 0;
+    while (sum < estimateSatoshis && this.utxos.length > 0) {
+      c++;
+      // this.utxos.sort((a, b) => Math.random() > 0.5); //从浅到深
+      if (this.utxos[0].satoshis > 546) {
+        let utxo = this.utxos.splice(0, 1)[0];
+        sum += utxo.satoshis;
+        utxos.push(utxo);
+      }
+
+      if (c > 50) {
         break;
       }
     }
+    if (sum < estimateSatoshis) {
+      console.error("inffucient fund");
+      return [];
+    }
+    console.log("fetchUtxos", utxos);
     return utxos;
   }
 

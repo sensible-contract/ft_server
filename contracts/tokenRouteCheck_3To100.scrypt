@@ -95,8 +95,8 @@ contract TokenRouteCheck {
     // max support loop num receiver, you can change this num, but will cause the contrac size increase. you can customize your output
     i = 0;
     int sumOutputToken = 0;
-    require(nReceivers <= 3);
-    loop(3) {
+    require(nReceivers <= 100);
+    loop(100) {
       if (i < nReceivers) {
         bytes address = receiverArray[i * TokenProto.TOKEN_ADDRESS_LEN: (i + 1) * TokenProto.TOKEN_ADDRESS_LEN];
         int tokenAmount = Util.fromLEUnsigned(receiverTokenAmountArray[i * TokenProto.TOKEN_AMOUNT_LEN: (i + 1) * TokenProto.TOKEN_AMOUNT_LEN]);

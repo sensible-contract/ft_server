@@ -2,6 +2,7 @@ const { Logger } = require("hns-logger-plugin");
 const { Http } = require("hns-http-plugin");
 const { Dao } = require("hns-dao-plugin");
 const { Application } = require("hns-app");
+const { SatotxSigner } = require("./lib/sensible_ft/SatotxSigner");
 exports.app = new Application();
 var app = exports.app;
 (async () => {
@@ -37,17 +38,24 @@ var app = exports.app;
     //todo
     const { PrivateKeyMgr } = require("./domain/PrivateKeyMgr");
     app.loadConfig("ftConfig", require("./config/ft.json"));
-    PrivateKeyMgr.init(app.get("ftConfig").wif);
+    const config = app.get("ftConfig");
+
+    PrivateKeyMgr.init(config.wif);
 
     const { ScriptHelper } = require("./lib/sensible_nft/ScriptHelper");
     const { BlockChainApi, API_NET } = require("./lib/blockchain-api");
+
     ScriptHelper.prepare(
       new BlockChainApi(
-        app.get("ftConfig").apiTarget,
-        app.get("ftConfig").network == "main" ? API_NET.MAIN : API_NET.TEST
+        config.apiTarget,
+        config.network == "main" ? API_NET.MAIN : API_NET.TEST
       ),
       PrivateKeyMgr.privateKey,
-      app.get("ftConfig").contractSatoshis
+      [
+        new SatotxSigner(config.oracles[0].satotxApiPrefix),
+        new SatotxSigner(config.oracles[1].satotxApiPrefix),
+        new SatotxSigner(config.oracles[2].satotxApiPrefix),
+      ]
     );
 
     const { UtxoMgr } = require("./domain/UtxoMgr");

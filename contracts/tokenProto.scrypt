@@ -1,12 +1,13 @@
 import "util.scrypt";
+import "txUtil.scrypt";
 
 library TokenProto {
 
-  // flag is oraclesv
-  static bytes PROTO_FLAG = b'6f7261636c657376';
+  // flag is sensible
+  static bytes PROTO_FLAG = b'73656e7369626c65';
   static int PROTO_TYPE = 1;
   // <type specific data> + <proto header>
-  // <proto header> = <type(4 bytes)> + <'oraclesv'(8 bytes)>
+  // <proto header> = <type(4 bytes)> + <'sensible'(8 bytes)>
   //<token type specific data> = <token_name (20 bytes)> + <token_symbol (10 bytes)> + <is_genesis(1 byte)> + <decimailNum(1 byte)> + <address(20 bytes)> + <token amount(8 bytes)> + <tokenid(20 bytes)>
   static int TOKEN_ID_LEN = 36;
   static int TOKEN_AMOUNT_LEN = 8;
@@ -70,6 +71,14 @@ library TokenProto {
 
   static function getTokenName(bytes script, int slen): bytes {
     return script[slen - TokenProto.TOKEN_NAME_OFFSET: slen - TokenProto.TOKEN_NAME_OFFSET + TokenProto.TOKEN_NAME_LEN];
+  }
+
+  static function checkDataLen(bytes script, int slen): bool {
+    return unpack(script[slen - TokenProto.DATA_LEN - 1: slen - TokenProto.DATA_LEN] + b'00') == TokenProto.DATA_LEN;
+  }
+
+  static function checkOpReturn(bytes script, int slen): bool {
+    return unpack(script[slen - TokenProto.DATA_LEN - 3: slen - TokenProto.DATA_LEN - 2] + b'00') == 0x6a;
   }
 
   static function getContractCode(bytes script, int slen): bytes {
